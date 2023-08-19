@@ -35,6 +35,7 @@ Cypress.Commands.add('clickAlert', (locator, message) => {
 })
 
 Cypress.Commands.add('login', (login, password) => {
+  cy.visit('https://barrigareact.wcaquino.me/')
   cy.get(loc.LOGIN.USER).type(login)
     cy.get(loc.LOGIN.PASSWORD).type(password)
     cy.get(loc.LOGIN.BTN_LOGIN).click()
@@ -44,4 +45,59 @@ Cypress.Commands.add('login', (login, password) => {
 Cypress.Commands.add('resetAccounts', () => {
   cy.get(loc.MENU.SETTINGS).click()
   cy.get(loc.MENU.RESET_BTN).click()
+})
+
+Cypress.Commands.add('getToken', (login, passwd) => {
+  cy.request({
+    method: 'POST',
+    url: '/signin',
+    body: {
+        email: login,
+        senha: passwd,
+        redirecionar: false}
+  }).its('body.token').should('not.be.empty')
+  .then(token => {
+    Cypress.env('token',  token)
+    return token
+  })
+})
+
+Cypress.Commands.add('resetRest', (token) => {
+   
+    cy.request({
+      method: 'GET',
+      url: '/reset',
+      headers: {Authorization: `JWT ${token}`},
+    }).its('status').should('be.equal', 200)
+
+})
+
+Cypress.Commands.add('getIdAccount', name => {
+  cy.getToken('almir.gg.nub@gmail.com', 'almir5566').then(token => {
+    
+    cy.request({
+      method: 'GET',
+      url: '/contas',
+      headers: {Authorization: `JWT ${token}`},
+      qs: {
+        nome: name
+      }
+    }).then(res => {
+      return res.body[0].id
+    })
+
+  })
+
+})
+
+Cypress.Commands.overwrite('request', (originalFn, ...options) => {
+  if(options.length === 1){
+    if(Cypress.env('token')){
+      options[0].headers = {
+      Authorization: `JWT ${Cypress.env('token')}`
+      }
+    }
+  }
+
+  return originalFn(...options)
 })
